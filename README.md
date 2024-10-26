@@ -3,12 +3,12 @@ Service config example:
 ```json
 {
   "modules": [
-    "debian"
+    "nginx"
   ],
   "module_definitions":  [
     {
-      "name": "debian",
-      "image": "debian:latest"
+      "name": "nginx",
+      "image": "nginx:latest"
     },
     {
       "name": "alpine",
@@ -18,4 +18,4 @@ Service config example:
 }
 ```
 
-_See [template.config.example](template.config.json) for an example env file._
+_See [example.config.example](example.config.json) for an example env file._

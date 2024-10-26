@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	moduleConfigPath := util.MustEnv("MODULE_CONFIG_PATH")
+	moduleConfigPath := util.MaybeEnv("MODULE_CONFIG_PATH")
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -49,23 +49,28 @@ func initInterruptHandler() {
 	}()
 }
 
-func initModules(moduleConfigPath string) (*module.ModuleManager, error) {
-	// check if module config file is valid
-	if _, err := os.Stat(moduleConfigPath); err != nil && errors.Is(err, os.ErrNotExist) {
-		return nil, errors.New("module config file doesn't exist")
-	} else if err != nil {
-		return nil, err
-	}
+func initModules(moduleConfigPath *string) (*module.ModuleManager, error) {
+	var config module.ModuleConfig
+	if moduleConfigPath == nil {
+		log.Print("no config file given")
+	} else {
+		// check if module config file is valid
+		if _, err := os.Stat(*moduleConfigPath); err != nil && errors.Is(err, os.ErrNotExist) {
+			return nil, errors.New("module config file doesn't exist")
+		} else if err != nil {
+			return nil, err
+		}
 
-	configFileContent, err := os.ReadFile(moduleConfigPath)
-	if err != nil {
-		return nil, err
+		configFileContent, err := os.ReadFile(*moduleConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		config, err := module.ParseServiceConfig(configFileContent)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("parsed module config: %v", string(util.UnwrapError(json.Marshal(config))))
 	}
-	config, err := module.ParseServiceConfig(configFileContent)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("parsed module config: %v", string(util.UnwrapError(json.Marshal(config))))
 
 	module, err := module.NewModuleManager(config)
 	if err != nil {
