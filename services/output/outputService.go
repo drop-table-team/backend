@@ -1,11 +1,13 @@
 package output
 
 import (
-	"backend/models"
 	"encoding/json"
-	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"os"
+
+	"backend/models"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type RegisterResponse struct {

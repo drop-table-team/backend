@@ -1,13 +1,14 @@
 services:
   mongo:
     image: mongo:latest
+    hostname: mongo
     volumes:
       - mongodb_data:/data/db/
       - mongodb_log:/var/log/mongodb/
     env_file:
       - .env
     ports:
-      - "${MONGO_PORT}:${MONGO_PORT}"
+      - "27017:27017"
     networks:
       - mongodb_network
   qdrant:
@@ -37,9 +38,6 @@ services:
     networks:
       - qdrant_network
       - mongodb_network
-    depends_on:
-      - mongo
-      - qdrant
 volumes:
   qdrant_storage:
   mongodb_data:

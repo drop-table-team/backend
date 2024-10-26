@@ -1,17 +1,19 @@
 package main
 
 import (
-	"backend/services/input"
-	"backend/services/output"
 	"context"
 	"errors"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"net/http"
 	"os"
+
+	"backend/services/input"
+	"backend/services/output"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Env struct {
@@ -55,14 +57,16 @@ func main() {
 	http.HandleFunc("/", getRoot)
 	http.HandleFunc("/hello", getHello)
 
-	//output
+	// output
 	http.HandleFunc("/modules/output/register", output.HandleRegister(env.client))
 	http.HandleFunc("/modules/output/unregister", output.HandleUnregister(env.client))
 
-	//input
+	// input
 	http.HandleFunc("/modules/input", input.HandleInput(env.client))
 
-	err = http.ListenAndServe(":8081", nil)
+	err = http.ListenAndServe(":8080", nil)
+
+	fmt.Println("Running")
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")
 	} else if err != nil {
