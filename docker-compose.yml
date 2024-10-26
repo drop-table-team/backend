@@ -8,6 +8,7 @@ services:
     environment:
       MINIO_URL: "minio:9000"
       MONGODB_URL: "mongodb://mongo:27017"
+      QDRANT_URL: "qdrant:6333"
     ports:
       - "${PUBLIC_BACKEND_PORT}:8080"
 
