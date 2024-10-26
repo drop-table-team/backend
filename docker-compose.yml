@@ -14,6 +14,7 @@ services:
       - "${MONGO_PORT}:${MONGO_PORT}"
     networks:
       - mongodb_network
+
   qdrant:
     container_name: qdrant_db
     hostname: qdrant_db
@@ -29,6 +30,22 @@ services:
       - qdrant_network
     env_file:
       - .env
+
+  minio:
+    container_name: minio
+    hostname: minio
+    image: minio/minio:latest
+    ports:
+      - "${MINIO_PORT}:${MINIO_PORT}"
+    secrets:
+      - minio_password
+    volumes:
+      - minio_data:/data
+    networks:
+      - minio_network
+    env_file:
+      - .env
+
   backend:
     build:
       dockerfile: Dockerfile
@@ -47,18 +64,27 @@ services:
     networks:
       - qdrant_network
       - mongodb_network
+      - minio_network
     depends_on:
       - qdrant
       - mongo
+      - minio
+
 secrets:
   mongo_password:
     file: secrets/mongo_password.txt
   qdrant_password:
     file: secrets/qdrant_password.txt
+  minio_password:
+    file: secrets/minio_password.txt
+
 volumes:
   qdrant_storage:
   mongodb_data:
   mongodb_log:
+  minio_data:
+
 networks:
   mongodb_network:
   qdrant_network:
+  minio_network:
