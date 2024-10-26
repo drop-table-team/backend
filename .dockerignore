@@ -1,0 +1,8 @@
+README.md
+LICENSE.md
+.gitignore
+.gitattributes
+.git
+docker-compose.yml
+Dockerfile
+template.env
