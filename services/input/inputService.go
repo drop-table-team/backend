@@ -2,6 +2,7 @@ package input
 
 import (
 	"backend/models"
+	"backend/storage"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,12 +10,12 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
+	"log"
 	"net/http"
-	"strconv"
 	"time"
 )
 
-func HandleInput(client *mongo.Client) http.HandlerFunc {
+func HandleInput(client *mongo.Client, storage *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -33,7 +34,7 @@ func HandleInput(client *mongo.Client) http.HandlerFunc {
 			return
 		}
 
-		file, _, err := r.FormFile("file")
+		file, header, err := r.FormFile("file")
 		if err != nil {
 			http.Error(w, "Error retrieving the file", http.StatusBadRequest)
 			return
@@ -41,11 +42,16 @@ func HandleInput(client *mongo.Client) http.HandlerFunc {
 		defer file.Close()
 
 		var fileBuffer bytes.Buffer
-		fileSize, err := io.Copy(&fileBuffer, file)
+		_, err = io.Copy(&fileBuffer, file)
 
 		hash, err := generateFileHash(&fileBuffer)
 
-		fmt.Println("Hash:" + hash + ", size: " + strconv.Itoa(int(fileSize)))
+		_, err = storage.UploadFile(fileBuffer, hash, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Error uploading the file to minio", http.StatusBadRequest)
+			return
+		}
 
 		models.AddEntry(client, entry)
 	}
