@@ -4,6 +4,8 @@ services:
     volumes:
       - mongodb_data:/data/db/
       - mongodb_log:/var/log/mongodb/
+    env_file:
+      - .env
     ports:
       - "${MONGO_PORT}:${MONGO_PORT}"
     networks:

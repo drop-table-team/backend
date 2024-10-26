@@ -1,14 +1,17 @@
 package main
 
 import (
+	"backend/services/input"
+	"backend/services/output"
 	"context"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"io"
+	"net/http"
+	"os"
 )
 
 type Env struct {
@@ -35,6 +38,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	env := Env{client}
+
 	defer func() {
 		if err = client.Disconnect(context.TODO()); err != nil {
 			panic(err)
@@ -45,5 +51,22 @@ func main() {
 	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
 		panic(err)
 	}
-	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
+
+	http.HandleFunc("/", getRoot)
+	http.HandleFunc("/hello", getHello)
+
+	//output
+	http.HandleFunc("/modules/output/register", output.HandleRegister(env.client))
+	http.HandleFunc("/modules/output/unregister", output.HandleUnregister(env.client))
+
+	//input
+	http.HandleFunc("/modules/input", input.HandleInput(env.client))
+
+	err = http.ListenAndServe(":8081", nil)
+	if errors.Is(err, http.ErrServerClosed) {
+		fmt.Printf("server closed\n")
+	} else if err != nil {
+		fmt.Printf("error starting server: %s\n", err)
+		os.Exit(1)
+	}
 }
