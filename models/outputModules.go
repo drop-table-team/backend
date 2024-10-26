@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"log"
 )
@@ -9,6 +10,10 @@ import (
 type OutputModule struct {
 	ModuleName    string `json:"moduleName"`
 	ModuleAddress string `json:"moduleAddress"`
+}
+
+type UnregisterName struct {
+	Name string `json:"name"`
 }
 
 func AddModule(client *mongo.Client, module OutputModule) {
@@ -21,9 +26,9 @@ func AddModule(client *mongo.Client, module OutputModule) {
 
 }
 
-func RemoveModule(client *mongo.Client, name string) {
+func RemoveModule(client *mongo.Client, name UnregisterName) {
 	modules := client.Database("mongo_data").Collection("outputModules")
-	filter := OutputModule{ModuleName: name}
+	filter := bson.D{{"modulename", name.Name}}
 
 	_, err := modules.DeleteOne(context.TODO(), filter)
 	if err != nil {

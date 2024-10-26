@@ -55,7 +55,7 @@ func HandleUnregister(client *mongo.Client) http.HandlerFunc {
 			return
 		}
 
-		var request string
+		var request models.UnregisterName
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
