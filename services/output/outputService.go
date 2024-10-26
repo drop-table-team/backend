@@ -1,14 +1,15 @@
 package output
 
 import (
+	"backend/models"
 	"encoding/json"
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"os"
-
-	"backend/models"
-
-	"go.mongodb.org/mongo-driver/mongo"
 )
+
+//var outboundIP, _ = net.LookupIP(os.Getenv("HOST_IP"))
+//var outboundIPString = outboundIP[0].String()
 
 type RegisterResponse struct {
 	MongoAddress    string `json:"mongoAddress"`
@@ -33,7 +34,8 @@ func HandleRegister(client *mongo.Client) http.HandlerFunc {
 		models.AddModule(client, module)
 
 		response := RegisterResponse{
-			MongoAddress:    os.Getenv("MONGO_ADDRESS"),
+			// returns the address of the mongodb, for production run mongodb and output modules on same machine, use localhost
+			MongoAddress:    "mongodb://" + "192.168.0.105" + ":" + os.Getenv("MONGO_PORT"),
 			MongoDatabase:   "mongo_data",
 			MongoCollection: "entries",
 			QdrantAddress:   os.Getenv("QDRANT_ADDRESS"),
