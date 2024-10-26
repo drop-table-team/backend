@@ -40,6 +40,8 @@ func HandleInput(database *mongo.Database, storage *storage.Storage) http.Handle
 
 		hash, err := generateFileHash(&fileBuffer)
 
+		entry.HashValue = hash
+
 		_, err = storage.UploadFile(fileBuffer, hash, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
 		if err != nil {
 			http.Error(w, "Error uploading the file to minio", http.StatusBadRequest)
