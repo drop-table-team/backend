@@ -1,4 +1,4 @@
-package models
+package data
 
 import (
 	"context"
@@ -16,24 +16,24 @@ type Entry struct {
 	HashValue     string   `json:"hashValue"`
 }
 
-func AddEntry(client *mongo.Client, entry Entry) {
-	entries := client.Database("mongo_data").Collection("entries")
+func AddEntry(database *mongo.Database, entry Entry) {
+	entries := database.Collection("entries")
 
-	_, err := entries.InsertOne(context.TODO(), entry)
+	_, err := entries.InsertOne(context.Background(), entry)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 }
 
-func ViewEntries(client *mongo.Client) ([]*Entry, error) {
-	entries := client.Database("mongo_data").Collection("entries")
+func ViewEntries(database *mongo.Database) ([]*Entry, error) {
+	entries := database.Collection("entries")
 
 	findOptions := options.Find()
 
 	var results []*Entry
 
-	cur, err := entries.Find(context.TODO(), bson.D{}, findOptions)
+	cur, err := entries.Find(context.Background(), bson.D{}, findOptions)
 	if err != nil {
 		return nil, err
 	}

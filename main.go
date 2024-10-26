@@ -1,11 +1,10 @@
 package main
 
 import (
+	httpModules "backend/http/modules"
 	"backend/storage"
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"os"
 
@@ -15,32 +14,21 @@ import (
 	"log"
 	"os/signal"
 
-	"backend/services/input"
-	"backend/services/output"
-
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Env struct {
-	client  *mongo.Client
-	storage *storage.Storage
-}
-
-func getRoot(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "This is my website!\n")
-}
-
-func getHello(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Hello, HTTP!\n")
-}
-
-// Replace the placeholder with your Atlas connection string
-const uri = "mongodb://mongo:27017"
-
 func main() {
 	moduleConfigPath := util.MaybeEnv("BACKEND_MODULE_CONFIG_PATH")
+
+	minioUrl := util.MustEnv("MINIO_HOST")
+	minioBucket := util.MustEnv("MINIO_BUCKET")
+
+	minioAccessKey := util.MustEnv("MINIO_ACCESS_KEY")
+	minioSecretKey := util.MustEnv("MINIO_SECRET_KEY")
+
+	mongoUri := util.MustEnv("MONGO_URI")
+	mongoDatabaseName := util.MustEnv("MONGO_DATABASE")
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -53,59 +41,44 @@ func main() {
 	}
 	stopFunctions = append(stopFunctions, func() { _ = moduleManager.StopAll() })
 
-	// Use the SetServerAPIOptions() method to set the Stable API version to 1
-	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
-	// Create a new client and connect to the server
-	mongoClient, err := mongo.Connect(context.TODO(), opts)
+	mongoClient, err := initMongo(mongoUri)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+	mongoDatabase := mongoClient.Database(mongoDatabaseName)
+	stopFunctions = append(stopFunctions, func() { _ = mongoClient.Disconnect(context.Background()) })
 
-	config := storage.Config{
-		Endpoint: *util.MaybeEnv("MINIO_URL"),
-		Bucket:   *util.MaybeEnv("BACKEND_MINIO_BUCKET"),
+	storageClient, err := initStorage(storage.Config{
+		Endpoint: minioUrl,
+		Bucket:   minioBucket,
 		Credentials: storage.Credentials{
-			AccessKey: *util.MaybeEnv("BACKEND_MINIO_ACCESS_KEY"),
-			SecretKey: *util.MaybeEnv("BACKEND_MINIO_SECRET_KEY"),
+			AccessKey: minioAccessKey,
+			SecretKey: minioSecretKey,
 		},
-	}
-	storageClient, err := storage.NewStorage(config)
+	})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	env := Env{mongoClient, storageClient}
-
-	defer func() {
-		if err = mongoClient.Disconnect(context.TODO()); err != nil {
-			panic(err)
-		}
-	}()
-	// Send a ping to confirm a successful connection
-	var result bson.M
-	if err := mongoClient.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
-		panic(err)
-	}
-
-	http.HandleFunc("/", getRoot)
-	http.HandleFunc("/hello", getHello)
+	mux := http.NewServeMux()
 
 	// output
-	http.HandleFunc("/modules/output/register", output.HandleRegister(env.client))
-	http.HandleFunc("/modules/output/unregister", output.HandleUnregister(env.client))
+	mux.HandleFunc("POST /modules/output/register", httpModules.HandleOutputRegister(moduleManager, mongoDatabaseName))
+	mux.HandleFunc("POST /modules/output/unregister", httpModules.HandleOutputUnregister(moduleManager))
 
 	// input
-	http.HandleFunc("/modules/input", input.HandleInput(env.client, env.storage))
+	mux.HandleFunc("POST /modules/input", httpModules.HandleInput(mongoDatabase, storageClient))
 
-	err = http.ListenAndServe(":8080", nil)
+	server := http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
+	if err = server.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
 
-	fmt.Println("Running")
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
+	for _, stopFunction := range stopFunctions {
+		stopFunction()
 	}
 }
 
@@ -128,6 +101,22 @@ func initInterruptHandler() {
 		<-c
 		log.Fatal("received 3 interrupt signals, aborting immediately")
 	}()
+}
+
+func initMongo(uri string) (*mongo.Client, error) {
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
+
+	client, err := mongo.Connect(context.Background(), opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, client.Ping(context.Background(), nil)
+}
+
+func initStorage(config storage.Config) (*storage.Storage, error) {
+	return storage.NewStorage(config)
 }
 
 func initModules(moduleConfigPath *string) (*module.ModuleManager, error) {
@@ -153,10 +142,10 @@ func initModules(moduleConfigPath *string) (*module.ModuleManager, error) {
 		log.Printf("parsed module config: %v", string(util.UnwrapError(json.Marshal(config))))
 	}
 
-	module, err := module.NewModuleManager(config)
+	moduleManager, err := module.NewModuleManager(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &module, module.StartAll()
+	return &moduleManager, moduleManager.StartAll()
 }
