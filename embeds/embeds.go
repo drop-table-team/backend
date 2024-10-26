@@ -1,9 +1,8 @@
-package main
+package embeds
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/qdrant/go-client/qdrant"
 	"io"
 	"log"
 	"net/http"
@@ -17,12 +16,24 @@ type EmbedResponse struct {
 }
 
 var (
-	embedQueue       = make(chan string, 100)
+	embedQueue       = make(chan Chunk, 100)
 	workerRunning    = false
 	mu               sync.Mutex
 	postURL          string
 	embedInitialized = false
 )
+
+const (
+	chunkSize = 100
+)
+
+type Chunk struct {
+	index   int
+	text    string
+	start   int
+	end     int
+	docUUID string
+}
 
 func initializeEmbeds() error {
 	if embedInitialized {
@@ -46,7 +57,7 @@ func initializeEmbeds() error {
 	return nil
 }
 
-func createAndStoreEmbed(text string) error {
+func createAndStoreEmbed(text string, docUUID string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -54,7 +65,33 @@ func createAndStoreEmbed(text string) error {
 		return fmt.Errorf("queue is full")
 	}
 
-	embedQueue <- text
+	start := 0
+	index := 0
+	for len(text) > chunkSize {
+		chunk := Chunk{
+			text:    text[:chunkSize],
+			start:   start,
+			end:     start + chunkSize,
+			docUUID: docUUID,
+			index:   index,
+		}
+		embedQueue <- chunk
+		text = text[chunkSize:]
+		start += chunkSize
+		index++
+	}
+
+	chunk := Chunk{
+		text:    text,
+		start:   start,
+		end:     start + len(text),
+		docUUID: docUUID,
+		index:   index,
+	}
+
+	log.Println("Chunk:", chunk)
+
+	embedQueue <- chunk
 	if !workerRunning {
 		workerRunning = true
 		go worker()
@@ -64,16 +101,16 @@ func createAndStoreEmbed(text string) error {
 }
 
 func worker() {
-	for text := range embedQueue {
-		createEmbed(text)
+	for chunk := range embedQueue {
+		createEmbed(chunk)
 	}
 	mu.Lock()
 	workerRunning = false
 	mu.Unlock()
 }
 
-func createEmbed(text string) {
-	payload := fmt.Sprintf(`{"model": "mxbai-embed-large","prompt": "%s"}`, text)
+func createEmbed(chunk Chunk) {
+	payload := fmt.Sprintf(`{"model": "mxbai-embed-large","prompt": "%s"}`, chunk.text)
 	resp, err := http.Post(postURL, "application/json", strings.NewReader(payload))
 	if err != nil {
 		fmt.Println("Error making GET request:", err)
@@ -100,19 +137,18 @@ func createEmbed(text string) {
 		return
 	}
 
-	err = upsertVector(embedResponse.Embedding)
+	embeddingChunk := EmbeddingChunk{
+		index:   chunk.index,
+		vector:  embedResponse.Embedding,
+		start:   chunk.start,
+		end:     chunk.end,
+		docUUID: chunk.docUUID,
+	}
+	err = upsertVector(embeddingChunk)
 	if err != nil {
 		fmt.Println("Error upserting vector:", err)
 		return
 	}
-
-	var points []*qdrant.ScoredPoint
-	points, err = queryVector(embedResponse.Embedding)
-
-	if err != nil {
-		log.Fatalf("Could not search points: %v", err)
-	}
-	log.Printf("Found points: %s", points)
 
 	fmt.Println("Vector upserted successfully")
 }

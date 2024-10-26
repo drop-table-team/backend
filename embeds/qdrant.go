@@ -1,4 +1,4 @@
-package main
+package embeds
 
 import (
 	"context"
@@ -21,8 +21,16 @@ var (
 const (
 	collectionName        = "mxbai-embed-large"
 	vectorSize     uint64 = 1024
-	distance              = qdrant.Distance_Dot
+	distance              = qdrant.Distance_Cosine
 )
+
+type EmbeddingChunk struct {
+	index   int
+	vector  []float32
+	start   int
+	end     int
+	docUUID string
+}
 
 func initializeQdrant() error {
 	if qdrantInitialized {
@@ -100,12 +108,12 @@ func initializeQdrant() error {
 	return nil
 }
 
-func upsertVector(vector []float32) error {
+func upsertVector(chunk EmbeddingChunk) error {
 	if !qdrantInitialized {
 		return fmt.Errorf("qdrant not initialized")
 	}
 
-	if len(vector) != int(vectorSize) {
+	if len(chunk.vector) != int(vectorSize) {
 		return fmt.Errorf("vector size is not %d", vectorSize)
 	}
 
@@ -114,7 +122,13 @@ func upsertVector(vector []float32) error {
 	upsertPoints := []*qdrant.PointStruct{
 		{
 			Id:      qdrant.NewIDUUID(vectorUUID),
-			Vectors: qdrant.NewVectors(vector...),
+			Vectors: qdrant.NewVectors(chunk.vector...),
+			Payload: qdrant.NewValueMap(map[string]any{
+				"docUUID": chunk.docUUID,
+				"start":   chunk.start,
+				"end":     chunk.end,
+				"index":   chunk.index,
+			}),
 		},
 	}
 
@@ -129,25 +143,4 @@ func upsertVector(vector []float32) error {
 	}
 
 	return nil
-}
-
-func queryVector(vector []float32) ([]*qdrant.ScoredPoint, error) {
-	if !qdrantInitialized {
-		return nil, fmt.Errorf("qdrant not initialized")
-	}
-
-	if len(vector) != int(vectorSize) {
-		return nil, fmt.Errorf("vector size is not %d", vectorSize)
-	}
-
-	searchPoints, err := client.Query(ctx, &qdrant.QueryPoints{
-		CollectionName: collectionName,
-		Query:          qdrant.NewQuery(vector...),
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("error querying vector: %w", err)
-	}
-
-	return searchPoints, nil
 }
