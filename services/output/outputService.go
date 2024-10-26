@@ -45,6 +45,7 @@ func HandleRegister(client *mongo.Client) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 	}
 }
 
