@@ -11,6 +11,7 @@ services:
       - "27017:27017"
     networks:
       - mongodb_network
+
   qdrant:
     image: qdrant/qdrant:latest
     ports:
@@ -20,6 +21,22 @@ services:
       - qdrant_storage:/qdrant/storage
     networks:
       - qdrant_network
+
+  minio:
+    container_name: minio
+    hostname: minio
+    image: minio/minio:latest
+    ports:
+      - "${MINIO_PORT}:${MINIO_PORT}"
+    secrets:
+      - minio_password
+    volumes:
+      - minio_data:/data
+    networks:
+      - minio_network
+    env_file:
+      - .env
+
   backend:
     build:
       dockerfile: Dockerfile
@@ -42,6 +59,9 @@ volumes:
   qdrant_storage:
   mongodb_data:
   mongodb_log:
+  minio_data:
+
 networks:
   mongodb_network:
   qdrant_network:
+  minio_network:
