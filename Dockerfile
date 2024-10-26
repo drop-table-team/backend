@@ -1,9 +1,6 @@
-FROM golang:1.23.2-bookworm
+FROM golang:1.23.2-bookworm AS builder
 
-RUN --mount=type=cache,target=/var/cache/apt \
-  apt-get update && apt-get install -y build-essential
-
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY go.mod .
 COPY go.sum .
@@ -14,6 +11,10 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main .
+RUN go build .
 
-CMD ["./main"]
+FROM debian:bookworm-slim
+
+COPY --from=builder /app/backend .
+
+CMD ["./backend"]

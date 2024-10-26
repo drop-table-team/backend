@@ -1,50 +1,12 @@
 services:
-  mongo:
-    image: mongo:latest
-    hostname: mongo
-    volumes:
-      - mongodb_data:/data/db/
-      - mongodb_log:/var/log/mongodb/
-    env_file:
-      - .env
-    ports:
-      - "27017:27017"
-    networks:
-      - mongodb_network
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    ports:
-      - "${QDRANT_PORT}:${QDRANT_PORT}"
-      - "${QDRANT_GRPC_PORT}:${QDRANT_GRPC_PORT}"
-    volumes:
-      - qdrant_storage:/qdrant/storage
-    networks:
-      - qdrant_network
-
-  minio:
-    container_name: minio
-    hostname: minio
-    image: minio/minio:latest
-    ports:
-      - "${MINIO_PORT}:${MINIO_PORT}"
-    secrets:
-      - minio_password
-    volumes:
-      - minio_data:/data
-    networks:
-      - minio_network
-    env_file:
-      - .env
-
   backend:
     build:
       dockerfile: Dockerfile
       context: ./
-    ports:
-      - 8080:8080
     environment:
       MONGODB_URL: "mongodb://mongo:27017"
+    ports:
+      - "${PUBLIC_BACKEND_PORT}:8080"
     develop:
       watch:
         - action: sync+restart
@@ -52,16 +14,40 @@ services:
           target: /usr/src/app
           ignore:
             - ./data/
-    networks:
-      - qdrant_network
-      - mongodb_network
-volumes:
-  qdrant_storage:
-  mongodb_data:
-  mongodb_log:
-  minio_data:
 
-networks:
-  mongodb_network:
-  qdrant_network:
-  minio_network:
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    env_file:
+      - .env
+    ports:
+      - "${PUBLIC_MINIO_CONSOLE_PORT}:9000"
+      - "${PUBLIC_MINIO_PORT}:9001"
+    volumes:
+      - minio_data:/data
+
+  mongo:
+    container_name: mongo
+    image: mongo:latest
+    hostname: mongo
+    env_file:
+      - .env
+    ports:
+      - "${PUBLIC_MONGO_PORT}:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  qdrant:
+    container_name: qdrant
+    image: qdrant/qdrant:latest
+    ports:
+      - "${PUBLIC_QDRANT_PORT}:6333"
+      - "${PUBLIC_QDRANT_GRPC_PORT}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  minio_data:
+  mongodb_data:
+  qdrant_data:
