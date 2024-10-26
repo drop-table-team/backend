@@ -36,10 +36,7 @@ services:
     container_name: backend
     hostname: backend
     ports:
-      - "${BACKEND_PORT}:${BACKEND_PORT}"
-    env_file:
-      - .env
-
+      - "8080:8080"
     develop:
       watch:
         - action: sync+restart
