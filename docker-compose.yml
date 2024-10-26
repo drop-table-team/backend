@@ -1,42 +1,30 @@
 services:
   mongo:
     image: mongo:latest
-    container_name: mongo_db
-    hostname: mongo_db
     volumes:
       - mongodb_data:/data/db/
       - mongodb_log:/var/log/mongodb/
-    env_file:
-      - .env
-    secrets:
-      - mongo_password
     ports:
       - "${MONGO_PORT}:${MONGO_PORT}"
     networks:
       - mongodb_network
   qdrant:
-    container_name: qdrant_db
-    hostname: qdrant_db
     image: qdrant/qdrant:latest
     ports:
       - "${QDRANT_PORT}:${QDRANT_PORT}"
       - "${QDRANT_GRPC_PORT}:${QDRANT_GRPC_PORT}"
-    secrets:
-      - qdrant_password
     volumes:
       - qdrant_storage:/qdrant/storage
     networks:
       - qdrant_network
-    env_file:
-      - .env
   backend:
     build:
       dockerfile: Dockerfile
       context: ./
-    container_name: backend
-    hostname: backend
     ports:
-      - "8080:8080"
+      - 8080:8080
+    environment:
+      MONGODB_URL: "mongodb://mongo:27017"
     develop:
       watch:
         - action: sync+restart
@@ -48,13 +36,8 @@ services:
       - qdrant_network
       - mongodb_network
     depends_on:
-      - qdrant
       - mongo
-secrets:
-  mongo_password:
-    file: secrets/mongo_password.txt
-  qdrant_password:
-    file: secrets/qdrant_password.txt
+      - qdrant
 volumes:
   qdrant_storage:
   mongodb_data:

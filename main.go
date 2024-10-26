@@ -1,18 +1,14 @@
 package main
 
 import (
-	"backend/models"
 	"context"
-	"errors"
 	"fmt"
-	"github.com/joho/godotenv"
+	"io"
+	"net/http"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"io"
-	"log"
-	"net/http"
-	"os"
 )
 
 type Env struct {
@@ -20,66 +16,34 @@ type Env struct {
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("got / request\n")
 	io.WriteString(w, "This is my website!\n")
 }
 
 func getHello(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("got /hello request\n")
 	io.WriteString(w, "Hello, HTTP!\n")
 }
 
+// Replace the placeholder with your Atlas connection string
+const uri = "mongodb://mongo:27017"
+
 func main() {
-	err := godotenv.Load()
+	// Use the SetServerAPIOptions() method to set the Stable API version to 1
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
+	// Create a new client and connect to the server
+	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		panic(err)
 	}
-
-	credential := options.Credential{
-		AuthMechanism: "SCRAM-SHA-256",
-		Username:      os.Getenv("MONGO_INITDB_ROOT_USERNAME"),
-		Password:      os.Getenv("MONGO_INITDB_ROOT_PASSWORD"),
+	defer func() {
+		if err = client.Disconnect(context.TODO()); err != nil {
+			panic(err)
+		}
+	}()
+	// Send a ping to confirm a successful connection
+	var result bson.M
+	if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Decode(&result); err != nil {
+		panic(err)
 	}
-
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017").SetAuth(credential)
-	client, err := mongo.Connect(context.TODO(), clientOptions)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = client.Ping(context.TODO(), nil)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Connected to MongoDB!")
-
-	env := &Env{client: client}
-
-	testEntry := models.Entry{Title: "TestTitle", Tags: []string{"Tag1", "Tag2"}, Short: "ShortDesc", UniversalRepresentative: "hhh"}
-
-	models.AddEntry(env.client, testEntry)
-
-	res, err := models.ViewEntries(env.client)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, result := range res {
-		res, _ := bson.MarshalExtJSON(result, false, false)
-		fmt.Println(string(res))
-	}
-
-	http.HandleFunc("/", getRoot)
-	http.HandleFunc("/hello", getHello)
-	err = http.ListenAndServe(":8081", nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Printf("server closed\n")
-	} else if err != nil {
-		fmt.Printf("error starting server: %s\n", err)
-		os.Exit(1)
-	}
+	fmt.Println("Pinged your deployment. You successfully connected to MongoDB!")
 }
