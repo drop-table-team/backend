@@ -1,20 +1,16 @@
 package output
 
 import (
+	"backend/models"
 	"encoding/json"
 	"net/http"
-	"os"
-
-	"backend/models"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type RegisterResponse struct {
-	MongoAddress    string `json:"mongoAddress"`
 	MongoDatabase   string `json:"mongoDatabase"`
 	MongoCollection string `json:"mongoCollection"`
-	QdrantAddress   string `json:"qdrantAddress"`
 }
 
 func HandleRegister(client *mongo.Client) http.HandlerFunc {
@@ -33,10 +29,8 @@ func HandleRegister(client *mongo.Client) http.HandlerFunc {
 		models.AddModule(client, module)
 
 		response := RegisterResponse{
-			MongoAddress:    os.Getenv("MONGO_ADDRESS"),
 			MongoDatabase:   "mongo_data",
 			MongoCollection: "entries",
-			QdrantAddress:   os.Getenv("QDRANT_ADDRESS"),
 		}
 
 		w.Header().Set("Content-Type", "application/json")
