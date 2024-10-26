@@ -57,3 +57,7 @@ Service config example:
 ```
 
 _See [example.config.json](example.config.json) for an example env file._
+
+## Dev setup
+
+All services besides the backend itself can be started by running `docker compose -f docker-compose.dev.yml`

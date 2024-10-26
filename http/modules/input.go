@@ -1,7 +1,7 @@
-package input
+package modules
 
 import (
-	"backend/models"
+	"backend/data"
 	"backend/storage"
 	"bytes"
 	"crypto/sha256"
@@ -10,25 +10,19 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
-	"log"
 	"net/http"
 	"time"
 )
 
-func HandleInput(client *mongo.Client, storage *storage.Storage) http.HandlerFunc {
+func HandleInput(database *mongo.Database, storage *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			return
-		}
-
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			http.Error(w, "Unable to parse form", http.StatusBadRequest)
 			return
 		}
 
 		jsonPart := r.FormValue("json")
-		var entry models.Entry
+		var entry data.Entry
 		if err := json.Unmarshal([]byte(jsonPart), &entry); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -48,12 +42,11 @@ func HandleInput(client *mongo.Client, storage *storage.Storage) http.HandlerFun
 
 		_, err = storage.UploadFile(fileBuffer, hash, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
 		if err != nil {
-			log.Println(err)
 			http.Error(w, "Error uploading the file to minio", http.StatusBadRequest)
 			return
 		}
 
-		models.AddEntry(client, entry)
+		data.AddEntry(database, entry)
 	}
 }
 
