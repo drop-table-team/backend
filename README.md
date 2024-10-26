@@ -6,6 +6,9 @@
 |----------------------------|---------------------------------------------------------------|
 | PUBLIC_BACKEND_PORT        | Port to access the backend on the host                        |
 | BACKEND_MODULE_CONFIG_PATH | Path to the [module config file](#module-config-file-example) |
+| BACKEND_MINIO_BUCKET       | Name of the minio bucket                                      |
+| BACKEND_MINIO_ACCESS_KEY   | Minio access key                                              |
+| BACKEND_MINIO_SECRET_KEY   | Minio secret key                                              |
 
 ### Minio
 

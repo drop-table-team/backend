@@ -3,17 +3,13 @@ services:
     build:
       dockerfile: Dockerfile
       context: ./
+    env_file:
+      - .env
     environment:
+      MINIO_URL: "minio:9000"
       MONGODB_URL: "mongodb://mongo:27017"
     ports:
       - "${PUBLIC_BACKEND_PORT}:8080"
-    develop:
-      watch:
-        - action: sync+restart
-          path: .
-          target: /usr/src/app
-          ignore:
-            - ./data/
 
   minio:
     container_name: minio
