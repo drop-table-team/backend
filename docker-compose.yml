@@ -1,11 +1,11 @@
 services:
-  mongodb:
+  mongo:
     image: mongo:latest
-    container_name: mongodb
-    hostname: mongodb
+    container_name: mongo_db
+    hostname: mongo_db
     volumes:
-      - mongodb-data:/data/db/
-      - mongodb-log:/var/log/mongodb/
+      - mongodb_data:/data/db/
+      - mongodb_log:/var/log/mongodb/
     env_file:
       - .env
     environment:
@@ -15,10 +15,42 @@ services:
       - "27017:27017"
     networks:
       - mongodb_network
+  qdrant:
+    container_name: qdrant_db
+    hostname: qdrant_db
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - qdrant_network
+  backend:
+    build:
+      dockerfile: Dockerfile
+      context: ./
+    container_name: backend
+    hostname: backend
+    ports:
+      - "8080:8080"
+    develop:
+      watch:
+        - action: sync+restart
+          path: .
+          target: /usr/src/app
+          ignore:
+            - ./data/
+    networks:
+      - qdrant_network
+      - mongodb_network
+    depends_on:
+      - qdrant
+      - mongo
 volumes:
-  mongodb-data:
-    driver: local
-    name: mongo-data
-  mongodb-log:
-    driver: local
-    name: mongo-log
+  qdrant_storage:
+  mongodb_data:
+  mongodb_log:
+networks:
+  mongodb_network:
+  qdrant_network:
