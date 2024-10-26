@@ -2,6 +2,7 @@
 
 | env name                         | example                      |
 |----------------------------------|------------------------------|
+| MODULE_CONFIG_PATH               | /run/config/modules.json     |
 | MONGO_INITDB_ROOT_USERNAME       | admin                        |
 | MONGO_INITDB_USERNAME            | root                         |
 | MONGO_INITDB_PASSWORD_FILE       | /run/secrets/mongo_password  |
@@ -20,3 +21,27 @@ _See [template.env](template.env) for an example env file._
 #### Setup Qdrant Password
 
 > file: secrets/qdrant_password.txt
+
+### Module config file example
+
+Service config example:
+
+```json
+{
+  "modules": [
+    "nginx"
+  ],
+  "module_definitions":  [
+    {
+      "name": "nginx",
+      "image": "nginx:latest"
+    },
+    {
+      "name": "alpine",
+      "image": "alpine:latest"
+    }
+  ]
+}
+```
+
+_See [example.config.example](example.config.json) for an example env file._

@@ -1,0 +1,11 @@
+{
+  "modules": [
+    "nginx"
+  ],
+  "module_definitions":  [
+    {
+      "name": "nginx",
+      "image": "nginx:latest"
+    }
+  ]
+}
