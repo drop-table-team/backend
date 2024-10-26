@@ -9,10 +9,10 @@ import (
 )
 
 type Entry struct {
-	Title                   string
-	Tags                    []string
-	Short                   string
-	UniversalRepresentative string
+	Title         string   `json:"title"`
+	Tags          []string `json:"tags"`
+	Short         string   `json:"short"`
+	Transcription string   `json:"transcription"`
 }
 
 func AddEntry(client *mongo.Client, entry Entry) {
