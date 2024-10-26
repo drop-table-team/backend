@@ -46,6 +46,8 @@ func HandleInput(client *mongo.Client, storage *storage.Storage) http.HandlerFun
 
 		hash, err := generateFileHash(&fileBuffer)
 
+		entry.HashValue = hash
+
 		_, err = storage.UploadFile(fileBuffer, hash, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
 		if err != nil {
 			log.Println(err)
