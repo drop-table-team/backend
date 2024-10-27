@@ -1,7 +1,8 @@
 {
   "modules": [
     "pdf_module",
-    "picture_module"
+    "picture_module",
+    "audio_module"
   ],
   "module_definitions":  [
     {
@@ -20,6 +21,15 @@
       "port": 80,
       "env": {
         "OLLAMA_MODEL": "llava"
+      }
+    },
+    {
+      "name": "audio_module",
+      "image": "ghcr.io/drop-table-team/audio_module:latest",
+      "types": ["audio/wav", "audio/vnd.wave"],
+      "port": 3000,
+      "env": {
+        "OLLAMA_MODEL": "llama3.2"
       }
     }
   ]
