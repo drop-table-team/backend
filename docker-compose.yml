@@ -96,8 +96,11 @@ services:
       - embedder
     env_file:
       - .env
+    networks:
+      - net
     environment:
       - "BACKEND_OLLAMA_URL=${OLLAMA_URL}"
+      - "MONGO_URI=mongodb://mongo:27017"
     ports:
       - "${PUBLIC_BACKEND_PORT}:8080"
     volumes:

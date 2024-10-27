@@ -17,7 +17,7 @@ import (
 
 func HandleInput(database *mongo.Database, storage *storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseMultipartForm(10 << 20); err != nil {
+		if err := r.ParseMultipartForm(10 << 50); err != nil {
 			http.Error(w, "Unable to parse form", http.StatusBadRequest)
 			return
 		}
@@ -55,6 +55,8 @@ func HandleInput(database *mongo.Database, storage *storage.Storage) http.Handle
 		data.AddEntry(database, entry)
 
 		http.Post(fmt.Sprintf("%s/queue", util.EmbedderUrl), "application/json", bytes.NewBuffer(util.UnwrapError(json.Marshal(entry))))
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
