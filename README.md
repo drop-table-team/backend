@@ -2,6 +2,7 @@
 git clone https://github.com/drop-table-team/backend
 cd backend
 
+# Ollama is required - change `OLLAMA_URL` in `.env`
 ln -s .env.example .env
 
 docker compose up -d
