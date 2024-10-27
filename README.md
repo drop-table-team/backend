@@ -1,3 +1,15 @@
+```sh
+git clone https://github.com/drop-table-team/backend
+cd backend
+
+ln -s .env.example .env
+
+docker compose up -d
+```
+[localhost:3000/](http://localhost:3000/)
+
+# OUTDATED
+
 ## Environment variables
 
 ### Backend
