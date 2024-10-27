@@ -1,11 +1,26 @@
 {
   "modules": [
-    "nginx"
+    "pdf_module",
+    "picture_module"
   ],
   "module_definitions":  [
     {
-      "name": "nginx",
-      "image": "nginx:latest"
+      "name": "pdf_module",
+      "image": "ghcr.io/drop-table-team/pdf_module:latest",
+      "types": ["application/pdf"],
+      "port": 80,
+      "env": {
+        "OLLAMA_MODEL": "llama3.2"
+      }
+    },
+    {
+      "name": "picture_module",
+      "image": "ghcr.io/drop-table-team/picture_module:latest",
+      "types": ["image/png", "image/jpg", "image/jpeg"],
+      "port": 80,
+      "env": {
+        "OLLAMA_MODEL": "llava"
+      }
     }
   ]
 }

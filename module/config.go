@@ -12,8 +12,11 @@ type ModuleConfig struct {
 }
 
 type ModuleDefinition struct {
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Name  string            `json:"name"`
+	Image string            `json:"image"`
+	Types []string          `json:"types"`
+	Port  uint16            `json:"port"`
+	Env   map[string]string `json:"env"`
 }
 
 func ParseServiceConfig(content []byte) (ModuleConfig, error) {

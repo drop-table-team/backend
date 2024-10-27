@@ -1,23 +1,11 @@
 services:
-  backend:
-    build:
-      dockerfile: Dockerfile
-      context: ./
-    env_file:
-      - .env
-    environment:
-      MINIO_URL: "minio:9000"
-      MONGODB_URL: "mongodb://mongo:27017"
-      QDRANT_URL: "qdrant:6333"
-    ports:
-      - "${PUBLIC_BACKEND_PORT}:8080"
-
   minio:
     container_name: minio
     image: bitnami/minio:latest
-    command: server /data --console-address ":9001"
     env_file:
       - .env
+    networks:
+      - net
     environment:
       - "MINIO_DEFAULT_BUCKETS=${MINIO_BUCKET}"
     ports:
@@ -32,6 +20,8 @@ services:
     hostname: mongo
     env_file:
       - .env
+    networks:
+      - net
     ports:
       - "${PUBLIC_MONGO_PORT}:27017"
     volumes:
@@ -40,11 +30,33 @@ services:
   qdrant:
     container_name: qdrant
     image: qdrant/qdrant:latest
+    env_file:
+      - .env
+    networks:
+      - net
     ports:
       - "${PUBLIC_QDRANT_PORT}:6333"
       - "${PUBLIC_QDRANT_GRPC_PORT}:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+
+  embedder:
+    container_name: embedder
+    depends_on:
+      - qdrant
+    image: ghcr.io/drop-table-team/embedder:latest
+    env_file:
+      - .env
+    networks:
+      - net
+    environment:
+      - "OLLAMA_ADDRESS=${OLLAMA_URL}"
+      - "QDRANT_ADDRESS=http://qdrant:6334"
+    ports:
+      - "${PUBLIC_EMBEDDER_PORT}:8080"
+
+networks:
+  net:
 
 volumes:
   minio_data:

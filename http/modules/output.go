@@ -12,11 +12,14 @@ type RegisterRequest struct {
 }
 
 type RegisterResponse struct {
-	MongoDatabase   string `json:"mongo_database"`
-	MongoCollection string `json:"mongo_collection"`
+	MongoAddress     string `json:"mongoAddress"`
+	MongoDatabase    string `json:"mongoDatabase"`
+	MongoCollection  string `json:"mongoCollection"`
+	QdrantAddress    string `json:"qdrantAddress"`
+	QdrantCollection string `json:"qdrantCollection"`
 }
 
-func HandleOutputRegister(manager *module.ModuleManager, mongoDatabase string) http.HandlerFunc {
+func HandleOutputRegister(manager *module.ModuleManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RegisterRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -30,11 +33,12 @@ func HandleOutputRegister(manager *module.ModuleManager, mongoDatabase string) h
 			return
 		}
 
-		module.Register()
-
 		_ = util.SendJson(w, RegisterResponse{
-			MongoDatabase:   mongoDatabase,
-			MongoCollection: "entries",
+			MongoAddress:     util.MongoUri,
+			MongoDatabase:    util.MongoDatabase,
+			MongoCollection:  "entries",
+			QdrantAddress:    util.QdrantUrl,
+			QdrantCollection: "data",
 		})
 	}
 }
@@ -52,7 +56,5 @@ func HandleOutputUnregister(manager *module.ModuleManager) http.HandlerFunc {
 			http.Error(w, "module not found", http.StatusNotFound)
 			return
 		}
-
-		module.Unregister()
 	}
 }

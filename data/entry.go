@@ -13,7 +13,7 @@ type Entry struct {
 	Tags          []string `json:"tags"`
 	Short         string   `json:"short"`
 	Transcription string   `json:"transcription"`
-	HashValue     string   `json:"hashValue"`
+	Uuid          string   `json:"uuid"`
 }
 
 func AddEntry(database *mongo.Database, entry Entry) {

@@ -19,16 +19,13 @@ import (
 )
 
 func main() {
-	moduleConfigPath := util.MaybeEnv("BACKEND_MODULE_CONFIG_PATH")
+	moduleConfigPath := util.MaybeEnv("MODULE_CONFIG_PATH")
 
 	minioUrl := util.MustEnv("MINIO_HOST")
 	minioBucket := util.MustEnv("MINIO_BUCKET")
 
 	minioAccessKey := util.MustEnv("MINIO_ACCESS_KEY")
 	minioSecretKey := util.MustEnv("MINIO_SECRET_KEY")
-
-	mongoUri := util.MustEnv("MONGO_URI")
-	mongoDatabaseName := util.MustEnv("MONGO_DATABASE")
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -41,11 +38,11 @@ func main() {
 	}
 	stopFunctions = append(stopFunctions, func() { _ = moduleManager.StopAll() })
 
-	mongoClient, err := initMongo(mongoUri)
+	mongoClient, err := initMongo(util.MongoUri)
 	if err != nil {
 		log.Fatal(err)
 	}
-	mongoDatabase := mongoClient.Database(mongoDatabaseName)
+	mongoDatabase := mongoClient.Database(util.MongoDatabase)
 	stopFunctions = append(stopFunctions, func() { _ = mongoClient.Disconnect(context.Background()) })
 
 	storageClient, err := initStorage(storage.Config{
@@ -62,16 +59,20 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// output
-	mux.HandleFunc("POST /modules/output/register", httpModules.HandleOutputRegister(moduleManager, mongoDatabaseName))
-	mux.HandleFunc("POST /modules/output/unregister", httpModules.HandleOutputUnregister(moduleManager))
+	// output modules
+	// mux.HandleFunc("GET /modules/output", httpModules.HandleGetOutput(moduleManager, mongoDatabaseName))
+	mux.HandleFunc("POST /modules/output", httpModules.HandleOutputRegister(moduleManager))
 
-	// input
+	mux.HandleFunc("GET /modules/input", httpModules.HandleGetInput(moduleManager))
 	mux.HandleFunc("POST /modules/input", httpModules.HandleInput(mongoDatabase, storageClient))
+	mux.HandleFunc("POST /modules/input/{module}", httpModules.HandleProxyInput(moduleManager))
 
 	server := http.Server{
-		Addr:    ":8080",
-		Handler: mux,
+		Addr: ":8080",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			mux.ServeHTTP(w, r)
+		}),
 	}
 	if err = server.ListenAndServe(); err != nil {
 		log.Fatal(err)
@@ -135,11 +136,18 @@ func initModules(moduleConfigPath *string) (*module.ModuleManager, error) {
 		if err != nil {
 			return nil, err
 		}
-		config, err := module.ParseServiceConfig(configFileContent)
+		config, err = module.ParseServiceConfig(configFileContent)
 		if err != nil {
 			return nil, err
 		}
 		log.Printf("parsed module config: %v", string(util.UnwrapError(json.Marshal(config))))
+	}
+
+	if config.Modules == nil {
+		config.Modules = make([]string, 0)
+	}
+	if config.ModuleDefinitions == nil {
+		config.ModuleDefinitions = make([]module.ModuleDefinition, 0)
 	}
 
 	moduleManager, err := module.NewModuleManager(config)

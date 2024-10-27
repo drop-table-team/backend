@@ -2,16 +2,17 @@ package modules
 
 import (
 	"backend/data"
+	"backend/module"
 	"backend/storage"
+	"backend/util"
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
-	"time"
 )
 
 func HandleInput(database *mongo.Database, storage *storage.Storage) http.HandlerFunc {
@@ -28,6 +29,9 @@ func HandleInput(database *mongo.Database, storage *storage.Storage) http.Handle
 			return
 		}
 
+		entryUuid, _ := uuid.NewRandom()
+		entry.Uuid = hex.EncodeToString(entryUuid[:])
+
 		file, header, err := r.FormFile("file")
 		if err != nil {
 			http.Error(w, "Error retrieving the file", http.StatusBadRequest)
@@ -38,39 +42,37 @@ func HandleInput(database *mongo.Database, storage *storage.Storage) http.Handle
 		var fileBuffer bytes.Buffer
 		_, err = io.Copy(&fileBuffer, file)
 
-		hash, err := generateFileHash(&fileBuffer)
-
-		entry.HashValue = hash
-
-		_, err = storage.UploadFile(fileBuffer, hash, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
+		_, err = storage.UploadFile(fileBuffer, entry.Uuid, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
 		if err != nil {
 			http.Error(w, "Error uploading the file to minio", http.StatusBadRequest)
 			return
 		}
 
 		data.AddEntry(database, entry)
+
+		http.Post(fmt.Sprintf("%s/queue", util.EmbedderUrl), "application/json", bytes.NewBuffer(util.UnwrapError(json.Marshal(entry))))
 	}
 }
 
-// generateFileHash creates a unique hash from the file data and timestamp.
-func generateFileHash(file *bytes.Buffer) (string, error) {
-	// Get the current timestamp as a string
-	timestamp := time.Now().String()
+func HandleProxyInput(manager *module.ModuleManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		moduleName := r.PathValue("module")
+		module := manager.FindByName(moduleName)
 
-	// Create a new SHA-256 hash instance
-	hasher := sha256.New()
+		if module == nil {
+			http.Error(w, "Module not found", http.StatusNotFound)
+			return
+		}
 
-	// Write file contents to the hasher
-	if _, err := hasher.Write(file.Bytes()); err != nil {
-		return "", fmt.Errorf("failed to write file data to hash: %v", err)
+		defer r.Body.Close()
+		response, err := http.Post(fmt.Sprintf("%s/input", module.URL()), r.Header.Get("Content-Type"), r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(response.StatusCode)
+		defer response.Body.Close()
+		io.Copy(w, response.Body)
 	}
-
-	// Write timestamp to the hasher
-	if _, err := hasher.Write([]byte(timestamp)); err != nil {
-		return "", fmt.Errorf("failed to write timestamp to hash: %v", err)
-	}
-
-	// Compute the hash and encode it as a hexadecimal string
-	hash := hex.EncodeToString(hasher.Sum(nil))
-	return hash, nil
 }

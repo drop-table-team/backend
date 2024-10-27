@@ -5,6 +5,14 @@ import (
 	"os"
 )
 
+var OllamaUrl = MustEnv("OLLAMA_URL")
+var QdrantUrl = MustEnv("QDRANT_URL")
+var NetworkName = MustEnv("NETWORK_NAME")
+var MongoUri = MustEnv("MONGO_URI")
+var MongoDatabase = MustEnv("MONGO_DATABASE")
+
+var EmbedderUrl = MustEnv("BACKEND_EMBEDDEDER_URL")
+
 func MaybeEnv(key string) *string {
 	v, ok := os.LookupEnv(key)
 	if !ok {

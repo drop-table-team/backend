@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/docker/docker/client"
 )
 
@@ -10,28 +11,21 @@ type Module struct {
 	ctx    context.Context
 	client *client.Client
 
-	name  string
-	image string
+	definition ModuleDefinition
 
 	container *moduleContainer
-
-	registered bool
-}
-
-func (m *Module) Register() {
-	m.registered = true
-}
-
-func (m *Module) Unregister() {
-	m.registered = false
-}
-
-func (m *Module) IsRegistered() bool {
-	return m.registered
 }
 
 func (m *Module) IsRunning() bool {
 	return m.container != nil
+}
+
+func (m *Module) Definition() ModuleDefinition {
+	return m.definition
+}
+
+func (m *Module) URL() string {
+	return fmt.Sprintf("http://%s:%d", m.container.ip, m.definition.Port)
 }
 
 func (m *Module) Start() error {
@@ -40,7 +34,7 @@ func (m *Module) Start() error {
 	}
 
 	var err error
-	if m.container, err = initModuleContainer(m.ctx, m.client, m.image, m.name); err != nil {
+	if m.container, err = initModuleContainer(m.ctx, m.client, m.definition); err != nil {
 		return err
 	}
 
@@ -57,7 +51,6 @@ func (m *Module) Stop() error {
 	}
 
 	m.container = nil
-	m.registered = false
 
 	return nil
 }

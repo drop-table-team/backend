@@ -43,20 +43,39 @@ Service config example:
   "modules": [
     "nginx"
   ],
-  "module_definitions":  [
+  "input_module_definitions": [
     {
       "name": "nginx",
-      "image": "nginx:latest"
+      "image": "nginx:latest",
+      "types": ["application/pdf"]
     },
     {
       "name": "alpine",
-      "image": "alpine:latest"
+      "image": "alpine:latest",
+      "types": ["audio/ogg"]
     }
   ]
 }
 ```
 
 _See [example.config.json](example.config.json) for an example env file._
+
+## Endpoints
+
+`GET /modules/input`
+```json
+[
+  {
+    "name": <string>,
+    "types": [<mime types as string>]
+  }
+]
+```
+
+`POST /modules/input/<module name>` - Send data to an output module
+```
+Sent data is module/mime specific
+```
 
 ## Dev setup
 

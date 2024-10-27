@@ -17,4 +17,6 @@ FROM debian:bookworm-slim
 
 COPY --from=builder /app/backend .
 
+ENV IS_DOCKER ""
+
 CMD ["./backend"]
