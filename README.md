@@ -58,7 +58,7 @@ Service config example:
 }
 ```
 
-_See [example.config.json](example.config.json) for an example env file._
+_See [example.config.json](example-config/config.json) for an example env file._
 
 ## Endpoints
 

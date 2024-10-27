@@ -55,6 +55,67 @@ services:
     ports:
       - "${PUBLIC_EMBEDDER_PORT}:8080"
 
+  classic-search:
+    container_name: classic-search
+    depends_on:
+      - qdrant
+      - embedder
+    image: ghcr.io/drop-table-team/classic-search:latest
+    env_file:
+      - .env
+    networks:
+      - net
+    environment:
+      - "MONGO_ADDRESS=mongodb://mongo:27017"
+    ports:
+      - "${PUBLIC_CLASSIC_SEARCH_PORT}:8080"
+
+  llm-search:
+    container_name: llm-search
+    depends_on:
+      - qdrant
+      - embedder
+    image: ghcr.io/drop-table-team/llm-search:latest
+    env_file:
+      - .env
+    networks:
+      - net
+    environment:
+      - "OLLAMA_ADDRESS=${OLLAMA_URL}"
+      - "QDRANT_ADDRESS=http://qdrant:6334"
+    ports:
+      - "${PUBLIC_LLM_SEARCH_PORT}:8080"
+
+  backend:
+    build:
+      dockerfile: Dockerfile
+      context: ./
+    depends_on:
+      - mongo
+      - minio
+      - embedder
+    env_file:
+      - .env
+    environment:
+      - "BACKEND_OLLAMA_URL=${OLLAMA_URL}"
+    ports:
+      - "${PUBLIC_BACKEND_PORT}:8080"
+    volumes:
+      - ./example-config:/config
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  frontend:
+    container_name: frontend
+    depends_on:
+      - backend
+    image: ghcr.io/drop-table-team/frontend:latest
+    env_file:
+      - .env
+    networks:
+      - net
+    ports:
+      - "${PUBLIC_FRONTEND_PORT}:3000"
+
 networks:
   net:
 
