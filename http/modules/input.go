@@ -42,7 +42,11 @@ func HandleInput(database *mongo.Database, storage *storage.Storage) http.Handle
 		var fileBuffer bytes.Buffer
 		_, err = io.Copy(&fileBuffer, file)
 
-		_, err = storage.UploadFile(fileBuffer, entry.Uuid, header.Filename, http.DetectContentType(fileBuffer.Bytes()))
+		contentType := http.DetectContentType(fileBuffer.Bytes())
+		for _, contentType = range header.Header.Values("Content-Type") {
+		}
+
+		_, err = storage.UploadFile(fileBuffer, entry.Uuid, header.Filename, contentType)
 		if err != nil {
 			http.Error(w, "Error uploading the file to minio", http.StatusBadRequest)
 			return
